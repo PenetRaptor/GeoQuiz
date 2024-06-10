@@ -22,7 +22,6 @@ class MainActivity : AppCompatActivity() {
         ViewModelProviders.of(this).get(QuizViewModel::class.java)
     }
 
-
     private lateinit var trueButton: Button
     private lateinit var falseButton: Button
     private lateinit var nextButton: Button
@@ -85,6 +84,8 @@ class MainActivity : AppCompatActivity() {
     private fun updateQuestion() {
         val questionTextResId = quizViewModel.currentQuestionText
         questionTextView.setText(questionTextResId)
+        trueButton.visibility = View.VISIBLE
+        falseButton.visibility = View.VISIBLE
     }
 
     private fun checkAnswer(userAnswer:Boolean) {
@@ -94,6 +95,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             R.string.incorrect_toast
         }
+        trueButton.visibility = View.INVISIBLE
+        falseButton.visibility = View.INVISIBLE
         Toast.makeText(this, messageResId,
             Toast.LENGTH_SHORT)
             .show()
