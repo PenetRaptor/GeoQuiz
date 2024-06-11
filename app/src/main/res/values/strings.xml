@@ -9,6 +9,11 @@
     <string name="true_button">True</string>
     <string name="false_button">False</string>
     <string name="next_button">Next</string>
+    <string name="cheat_button">Help</string>
     <string name="correct_toast">Correct!</string>
     <string name="incorrect_toast">Incorrect!</string>
+
+    <string name="warning_text">Вы действительно хотите это сделать?</string>
+    <string name="show_answer_button">Показать ответ</string>
+    <string name="judgment_toast">А вот так вот не надо</string>
 </resources>

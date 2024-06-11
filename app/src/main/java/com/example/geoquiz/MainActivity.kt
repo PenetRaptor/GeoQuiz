@@ -14,6 +14,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 
 private const val TAG = "MainActivity"
+private const val KEY_INDEX = "index"
+private const val REQUEST_CODE_CHEAT = 0
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var falseButton: Button
     private lateinit var nextButton: Button
     private lateinit var questionTextView: TextView
+    private lateinit var cheatButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +36,9 @@ class MainActivity : AppCompatActivity() {
 
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+        val currentIndex = savedInstanceState?.getInt(KEY_INDEX, 0) ?: 0
+        quizViewModel.currentIndex = currentIndex
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -56,8 +62,18 @@ class MainActivity : AppCompatActivity() {
         nextButton.setOnClickListener {
             quizViewModel.moveToNext()
             updateQuestion()
+            checkAskCompleted()
         }
+
         updateQuestion()
+
+        cheatButton = findViewById(R.id.cheat_button)
+        cheatButton.setOnClickListener {
+            val answerIsTrue = quizViewModel.currentQuestionAnswer
+            val intent = CheatActivity.newIntent(this@MainActivity, answerIsTrue)
+            startActivityForResult(intent, REQUEST_CODE_CHEAT)
+        }
+
     }
 
     override fun onStart() {
@@ -72,6 +88,14 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         Log.d(TAG,"onPause() called")
     }
+
+    override fun onSaveInstanceState(savedInstanceState: Bundle)
+    {
+        super.onSaveInstanceState(savedInstanceState)
+        Log.i(TAG, "onSaveInstanceState")
+        savedInstanceState.putInt(KEY_INDEX, quizViewModel.currentIndex)
+    }
+
     override fun onStop() {
         super.onStop()
         Log.d(TAG, "onStop() called")
@@ -84,22 +108,86 @@ class MainActivity : AppCompatActivity() {
     private fun updateQuestion() {
         val questionTextResId = quizViewModel.currentQuestionText
         questionTextView.setText(questionTextResId)
-        trueButton.visibility = View.VISIBLE
-        falseButton.visibility = View.VISIBLE
+        val isLastQuestion = quizViewModel.currentIndex == quizViewModel.questionSize - 1
+
+        // Если это последний вопрос, скрываем кнопку "Next"
+        nextButton.visibility = if (isLastQuestion) View.GONE else View.VISIBLE
     }
 
-    private fun checkAnswer(userAnswer:Boolean) {
+    private fun checkAnswer(userAnswer: Boolean) {
+        if (checkAskCompleted()) return
+
         val correctAnswer = quizViewModel.currentQuestionAnswer
-        val messageResId = if (userAnswer == correctAnswer) {
-            R.string.correct_toast
+        var messageResId: Int
+        if (userAnswer == correctAnswer) {
+            messageResId = R.string.correct_toast
+            quizViewModel.currentCorrectAnswerUp()
         } else {
-            R.string.incorrect_toast
+            messageResId = R.string.incorrect_toast
         }
-        trueButton.visibility = View.INVISIBLE
-        falseButton.visibility = View.INVISIBLE
-        Toast.makeText(this, messageResId,
-            Toast.LENGTH_SHORT)
-            .show()
+        if (quizViewModel.isCheater) messageResId = R.string.judgment_toast
+
+
+        Toast.makeText(
+            this,
+            messageResId,
+            Toast.LENGTH_SHORT
+        ).show()
+
+        quizViewModel.currentQuestionUserResponse(userAnswer) //Запоминание ответа пользователя
+
+        trueButton.isEnabled = false
+        falseButton.isEnabled = false
+        quizViewModel.currentResponseUp()
+        if (checkAskCompleted()) return
+
+        if (userAnswer == correctAnswer) {
+            messageResId = R.string.correct_toast
+            quizViewModel.currentCorrectAnswerUp()
+        } else {
+            messageResId = R.string.incorrect_toast
+        }
+        if (quizViewModel.isCheater) messageResId = R.string.judgment_toast
+
+        Toast.makeText(
+            this,
+            messageResId,
+            Toast.LENGTH_SHORT
+        ).show()
+
+        quizViewModel.currentQuestionUserResponse(userAnswer) // Запоминание ответа пользователя
+
+        trueButton.isEnabled = false
+        falseButton.isEnabled = false
+        quizViewModel.currentResponseUp()
+
+        // Проверяем, является ли текущий вопрос последним в игре
+        if (quizViewModel.currentIndex == quizViewModel.questionSize - 1) {
+            // Если это последний вопрос, показываем результаты
+            checkQuizCompleted()
+        }
+    }
+
+    private fun checkAskCompleted(): Boolean {
+        checkQuizCompleted()
+        if (quizViewModel.currentQuestionUserResponse == null) {
+            trueButton.isEnabled = true
+            falseButton.isEnabled = true
+            return false
+        } else {
+            trueButton.isEnabled = false
+            falseButton.isEnabled = false
+            return true
+        }
+    }
+
+    private fun checkQuizCompleted() {
+        val quizSize = quizViewModel.questionSize
+        if (quizViewModel.currentResponse == quizSize) {
+            val msg =
+                "Игра завершена. Правильных ответов ${quizViewModel.currentCorrectAnswer}/${quizSize}"
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        }
     }
 }
 
